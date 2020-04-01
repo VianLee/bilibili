@@ -48,8 +48,6 @@ def choose_current_time_dur():
     return dur
 
 
+# Choose greeting list from time_table
 def choose_greeting_list(filepath):
     return read_file(filepath)[choose_current_time_dur()]
-
-
-print(read_file("../../greetingMsg"))
