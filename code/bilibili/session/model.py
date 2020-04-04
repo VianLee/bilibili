@@ -103,12 +103,12 @@ class Session:
         raise NotImplementedError
 
 
-    def required_login(self, *args, **kwargs):
+    def required_login(self, *outer_args, **outer_kwargs):
         def decorator(func):
             @functools.wraps(func)
             def wrapper(*args, **kwargs):
                 if not self._login:
-                    self._login_by(*args, **kwargs)
+                    self._login_by(*outer_args, **outer_kwargs)
                 return func(*args, **kwargs)
             return wrapper
         return decorator

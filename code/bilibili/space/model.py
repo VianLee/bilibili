@@ -31,6 +31,9 @@ class User:
             - dynamics: itertor, to be done
             + channels: NotImplementedError
             + favorites: NotImplementedError
+            + bangumis: NotImplementedError
+            + cinemas: NotImplementedError
+            + tags: NotImplementedError
         - function
             - set_info()
     '''
@@ -77,7 +80,7 @@ class User:
 
 
     @property
-    @session.required_login
+    @session.required_login()
     def followers(self):
         '''Iterate all followers from user
 
@@ -102,7 +105,7 @@ class User:
 
 
     @property
-    @session.required_login
+    @session.required_login()
     def followings(self):
         '''Iterate all followings from user
 
@@ -147,6 +150,27 @@ class User:
 
     @property
     def favorites(self):
+        raise NotImplementedError
+
+
+    @property
+    def bangumis(self):
+        '''追番
+        '''
+        raise NotImplementedError
+
+
+    @property
+    def cinemas(self):
+        '''追剧
+        '''
+        raise NotImplementedError
+
+
+    @property
+    def tags(self):
+        '''订阅标签
+        '''
         raise NotImplementedError
 
 
