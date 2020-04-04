@@ -3,16 +3,17 @@ __all__ = ('User', 'Video', 'Dynamic', 'Comment')
 
 
 import collections
-import faker
 import math
 import requests
 import time
 import warnings
 
+from ..session import session
+from ..util.decorators import lazy_property
 
 
-F = faker.Faker()
-Comment = collections.namedtuple('Comments', ('content', 'like', 'user_id', 'timestamp'))
+
+_Comment = collections.namedtuple('Comments', ('content', 'like', 'user_id', 'timestamp'))
 
 
 
@@ -27,13 +28,11 @@ class User:
             - number_of_followers: int
             - followings: iterator
             - number_of_followings: int
-            + dynamics: itertor, to be done
+            - dynamics: itertor, to be done
             + channels: NotImplementedError
             + favorites: NotImplementedError
         - function
             - set_info()
-            - set_cookies(cookies: dict)
-            - set_cookies_from_selenium(webdriver: selenium.webdriver.Remote)
     '''
 
     _URL_VIDEO = 'https://api.bilibili.com/x/space/arc/search'
@@ -42,12 +41,6 @@ class User:
 
     def __init__(self, id, info=True):
         self.id = int(id)
-        self._session = requests.Session()
-        self._session.headers.update({
-            'host': 'api.bilibili.com',
-            'referer': 'https://www.bilibili.com',
-            'user-agent': F.user_agent(),
-        })
         self.info = None
         info and self.set_info()
 
@@ -75,7 +68,7 @@ class User:
                 yield Video(id)
 
 
-    @property
+    @lazy_property
     def number_of_videos(self):
         '''Return the number of videos
         '''
@@ -84,6 +77,7 @@ class User:
 
 
     @property
+    @session.required_login
     def followers(self):
         '''Iterate all followers from user
 
@@ -99,7 +93,7 @@ class User:
                 yield User(id, self.info is not None)
 
 
-    @property
+    @lazy_property
     def number_of_followers(self):
         '''Return the number of followers
         '''
@@ -108,6 +102,7 @@ class User:
 
 
     @property
+    @session.required_login
     def followings(self):
         '''Iterate all followings from user
 
@@ -123,7 +118,7 @@ class User:
                 yield User(id, self.info is not None)
 
 
-    @property
+    @lazy_property
     def number_of_followings(self):
         '''Return the number of followings
         '''
@@ -140,7 +135,7 @@ class User:
             desc = dynamic.pop('desc')
             yield Dynamic.from_args(
                 id=desc['dynamic_id'], user_id=desc['uid'], view=desc['view'],
-                repost=desc['repost'], number_of_comments=desc['comment'],
+                repost=desc['repost'], number_of_comments=desc.get('comment'),
                 like=desc['like'], timestamp=desc['timestamp'], others=desc,
             )
 
@@ -162,19 +157,6 @@ class User:
             self.info = self._find_info()
 
 
-    def set_cookies(self, cookies):
-        '''Set cookies of current session with `cookies`
-        '''
-        self._session.cookies.update(cookies)
-
-
-    def set_cookies_from_selenium(self, webdriver):
-        '''Set cookies from `selenium`
-        '''
-        cookies = webdriver.get_cookies()
-        self.set_cookies({item['name']: item['value'] for item in cookies})
-
-
     def _data(self, url, count, ps, order, id_name, keys1, key2):
         page_number = math.ceil(count/ps)
         f, g = self._ids_at, self._data_at
@@ -187,7 +169,7 @@ class User:
     def _data_at(self, url, page, ps, order, id_name):
         params = dict(ps=ps, pn=page, order=order)
         params[id_name] = self.id
-        response = self._session.get(url, params=params)
+        response = session.session.get(url, params=params)
         return response.json()
 
 
@@ -207,7 +189,7 @@ class User:
         url = 'https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/space_history'
         params = dict(host_uid=self.id, offset_dynamic_id=0)
         while True:
-            response = requests.get(url, params=params)  # do not use `self._session`
+            response = requests.get(url, params=params)  # do not use `session.session`
             data = response.json()['data']
             yield from data['cards']
             if not data['has_more']:
@@ -220,13 +202,13 @@ class User:
         # account info
         params = dict(mid=self.id, jsonp='jsonp')
         url = 'https://api.bilibili.com/x/space/acc/info'
-        response = self._session.get(url, params=params)
+        response = session.session.get(url, params=params)
         data = response.json().get('data')
         for key in ('name', 'sex', 'face', 'sign', 'level', 'birthday'):
             info[key] = data.get(key)
         # up status
         url = 'https://api.bilibili.com/x/space/upstat'
-        response = self._session.get(url, params=params)
+        response = session.session.get(url, params=params)
         data = response.json().get('data')
         info['archive_view'] = data.get('archive').get('view')
         info['article_view'] = data.get('article').get('view')
@@ -234,7 +216,7 @@ class User:
         # relation status
         params = dict(vmid=self.id, jsonp='jsonp')
         url = 'https://api.bilibili.com/x/relation/stat'
-        response = self._session.get(url, params=params)
+        response = session.session.get(url, params=params)
         data = response.json().get('data')
         info['following'] = data.get('following')
         info['follower'] = data.get('follower')
@@ -255,12 +237,6 @@ class Video:
 
     def __init__(self, id, info=True):
         self.id = int(id)
-        self._session = requests.Session()
-        self._session.headers.update({
-            'host': 'api.bilibili.com',
-            'referer': 'https://www.bilibili.com',
-            'user-agent': F.user_agent(),
-        })
         self._timestamp = int(1000*time.time())
         self.info = None
         info and self.set_info()
@@ -280,8 +256,7 @@ class Video:
             >>> for comment in video.comments:
             ...     print(comment)
         '''
-        for page in self._comments(): 
-            yield from page
+        yield from Comment.from_args(self.id)
 
 
     def set_info(self):
@@ -289,48 +264,11 @@ class Video:
             self.info = self._find_info()
 
 
-    def _comments(self, type=1):
-        first_page = self._comments_data_at(1, type=type)
-        if first_page['data']:
-            page_info = first_page['data']['page']
-            page_number = math.ceil(page_info['count']/page_info['size'])
-            f, g = self._find_comments, self._comments_data_at
-            return (f(g(page+1, type=type)['data']['replies'])
-                for page in range(page_number))
-        return list(list())
-
-
-    def _comments_data_at(self, page, root=0, ps=10, sort=2, type=1):
-        url = 'https://api.bilibili.com/x/v2/reply'
-        params = dict(pn=page, type=type, oid=self.id, sort=sort, _=self._timestamp)
-        if root:
-            url += '/reply'
-            params.update(dict(root=root, ps=ps))
-        return self._session.get(url, params=params).json()
-
-
-    def _find_comments(self, replies, ps=10):
-        if replies:
-            for reply in replies:
-                message = reply['content']['message']
-                mid = int(reply['member']['mid'])
-                ctime = reply['ctime']
-                like = reply['like']
-                yield Comment(message, like, mid, ctime)
-                rcount = reply['rcount']
-                if rcount:
-                    for page in range(math.ceil(rcount/ps)):
-                        rpid = reply['rpid']
-                        data = self._comments_data_at(page+1, rpid, ps)
-                        replies = data['data']['replies']
-                        yield from self._find_comments(replies)
-
-
     def _find_info(self):
         info = dict()
         # video info
         url = 'https://api.bilibili.com/x/web-interface/view'
-        response = self._session.get(url, params=dict(aid=self.id))
+        response = session.session.get(url, params=dict(aid=self.id))
         data = response.json().get('data')
         for key in ('pic', 'title', 'pubdate', 'desc', 'duration'):
             info[key] = data.get(key)
@@ -376,7 +314,7 @@ class Dynamic:
 
     @property
     def comments(self):
-        pass
+        yield from Comment.from_args(self.id, type=17)
 
 
     def set_info(self):
@@ -388,6 +326,60 @@ class Dynamic:
             setattr(self, key, data.get(key, None))
         self.number_of_comments = data['comment']
 
+
+
+class Comment(_Comment):
+    '''Comment model
+    '''
+
+    @classmethod
+    def from_args(cls, id, type=1):
+        for page in cls._comments(id, type):
+            yield from page
+
+
+    @classmethod
+    def _comments(cls, id, type=1, timestamp=None, ps=10, sort=2):
+        timestamp = timestamp or int(time.time())
+        first_page = cls._comments_data_at(id, 1, timestamp, 0, ps, sort, type)
+        if first_page['data']:
+            page_info = first_page['data']['page']
+            page_number = math.ceil(page_info['count']/page_info['size'])
+            f, g = cls._find_comments, cls._comments_data_at
+            return (
+                f(
+                    g(id, page+1, timestamp, 0, ps, sort, type)['data']['replies'],
+                    id, timestamp, ps, sort, type
+                ) for page in range(page_number))
+        return list(list())
+
+
+    @classmethod
+    def _comments_data_at(cls, id, page, timestap, root, ps, sort, type):
+        url = 'https://api.bilibili.com/x/v2/reply'
+        params = dict(pn=page, type=type, oid=id, sort=sort, _=timestap)
+        if root:
+            url += '/reply'
+            params.update(dict(root=root, ps=ps))
+        return session.session.get(url, params=params).json()
+
+
+    @classmethod
+    def _find_comments(cls, replies, id, timestamp, ps, sort, type):
+        if replies:
+            for reply in replies:
+                message = reply['content']['message']
+                mid = int(reply['member']['mid'])
+                ctime = reply['ctime']
+                like = reply['like']
+                yield cls(message, like, mid, ctime)
+                rcount = reply['rcount']
+                if rcount:
+                    for page in range(math.ceil(rcount/ps)):
+                        rpid = reply['rpid']
+                        data = cls._comments_data_at(id, page+1, timestamp, rpid, ps, sort, type)
+                        replies = data['data']['replies']
+                        yield from cls._find_comments(replies, id, timestamp, ps, sort, type)
 
 
 if __name__ == '__main__':

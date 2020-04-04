@@ -16,6 +16,7 @@ aiohttp = "*"
 sqlalchemy = "*"
 lxml = "*"
 bs4 = "*"
+rsa = "*"
 
 [requires]
 python_version = "3.8"
