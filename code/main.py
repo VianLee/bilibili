@@ -13,7 +13,7 @@ if __name__ == '__main__':
     # IPython >>> %run -i main.py
     ## Cache the webdriver
     if 'browser' not in locals():
-        browser = webdriver.Chrome()
+        browser = webdriver.Firefox()
     else:
         exit(0)
     # a = Auto(web_driver=browser, login=True)
@@ -34,8 +34,7 @@ if __name__ == '__main__':
             sleep(5)
             user_name = browser.find_elements_by_class_name(tag)[0].text
             texts = (
-                f'晚上好呀，{user_name}～',
-                '记得按时吃晚饭呀，加油！',
+                f'早点休息呀 {user_name} ～',
             )
             for text in texts:
                 browser.find_element_by_class_name('chat-input.border-box') \

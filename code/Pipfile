@@ -14,6 +14,8 @@ faker = "*"
 matplotlib = "*"
 aiohttp = "*"
 sqlalchemy = "*"
+lxml = "*"
+bs4 = "*"
 
 [requires]
 python_version = "3.8"

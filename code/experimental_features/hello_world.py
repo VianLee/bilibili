@@ -178,12 +178,10 @@ class User:
 if __name__ == '__main__':
     myself = User(354576498)
     texts = (
-        '这里是留言',
-        '不要超过二十个字符呀～',
-        '多少个都可以的呀',
+        '开门，社区送温暖 qwq',
+        '领得不多，见谅哈～早点休息！',
     )
-    texts = ('午安', )
-    gift_num = 1
+    gift_num = 5
 
     browser = webdriver.Firefox()
     browser.get('https://passport.bilibili.com/login')
