@@ -145,17 +145,29 @@ class User:
 
     @property
     def channels(self):
+        '''
+        References:
+            - https://api.bilibili.com/x/space/channel/list?mid=354576498&guest=true
+        '''
         raise NotImplementedError
 
 
     @property
     def favorites(self):
+        '''
+        References:
+            - https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid=354576498
+            - https://api.bilibili.com/x/v3/fav/folder/collected/list?pn=1&ps=20&up_mid=354576498
+        '''
         raise NotImplementedError
 
 
     @property
     def bangumis(self):
         '''追番
+
+        References:
+            - https://api.bilibili.com/x/space/bangumi/follow/list?type=1&follow_status=0&pn=1&ps=15&vmid=354576498&ts=1586024234675
         '''
         raise NotImplementedError
 
@@ -163,6 +175,9 @@ class User:
     @property
     def cinemas(self):
         '''追剧
+
+        References:
+            - https://api.bilibili.com/x/space/bangumi/follow/list?type=2&follow_status=0&pn=1&ps=15&vmid=354576498&ts=1586024297034
         '''
         raise NotImplementedError
 
@@ -170,6 +185,9 @@ class User:
     @property
     def tags(self):
         '''订阅标签
+
+        References:
+            - https://space.bilibili.com/ajax/tags/getSubList?mid=354576498
         '''
         raise NotImplementedError
 
