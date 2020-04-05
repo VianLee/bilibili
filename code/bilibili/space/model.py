@@ -1,4 +1,4 @@
-__all__ = ('User', 'Video', 'Dynamic', 'Comment')
+__all__ = ('User', 'Video', 'Dynamic', 'Comment', 'FavoriteList')
 
 
 
@@ -14,6 +14,7 @@ from ..util.decorators import lazy_property
 
 
 _Comment = collections.namedtuple('Comments', ('content', 'like', 'user_id', 'timestamp'))
+_FavoriteList = collections.namedtuple('FavoriteList', ('id', 'title', 'number_of_media'))
 
 
 
@@ -30,7 +31,8 @@ class User:
             - number_of_followings: int
             - dynamics: itertor, to be done
             + channels: NotImplementedError
-            + favorites: NotImplementedError
+            - favorites: NotImplementedError
+            - number_of_favorites
             + bangumis: NotImplementedError
             + cinemas: NotImplementedError
             + tags: NotImplementedError
@@ -159,7 +161,17 @@ class User:
             - https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid=354576498
             - https://api.bilibili.com/x/v3/fav/folder/collected/list?pn=1&ps=20&up_mid=354576498
         '''
-        raise NotImplementedError
+        url = 'https://api.bilibili.com/x/v3/fav/folder/created/list-all'
+        data = requests.get(url, params=dict(up_mid=self.id)).json()
+        for favlist in data['data']['list']:
+            yield FavoriteList(favlist['id'], favlist['title'], favlist['media_count'])
+
+
+    @lazy_property
+    def number_of_favorites(self):
+        url = 'https://api.bilibili.com/x/v3/fav/folder/created/list-all'
+        data = requests.get(url, params=dict(up_mid=self.id)).json()
+        return len(data['data']['list'])
 
 
     @property
@@ -312,6 +324,9 @@ class Video:
         url = 'https://api.bilibili.com/x/web-interface/view'
         response = session.session.get(url, params=dict(aid=self.id))
         data = response.json().get('data')
+        if data is None:
+            print('访问权限不足，需要登录。')
+            raise PermissionError
         for key in ('pic', 'title', 'pubdate', 'desc', 'duration'):
             info[key] = data.get(key)
         info['owner'] = data['owner']['mid']
@@ -422,6 +437,48 @@ class Comment(_Comment):
                         data = cls._comments_data_at(id, page+1, timestamp, rpid, ps, sort, type)
                         replies = data['data']['replies']
                         yield from cls._find_comments(replies, id, timestamp, ps, sort, type)
+
+
+
+class FavoriteList(_FavoriteList):
+    '''Favorite list mode
+
+    API:
+        - value
+            - id
+            - title
+            - number_of_media
+        - property
+            - info
+            - videos
+    '''
+
+    @lazy_property
+    def info(self):
+        info = self._data_at(1)['info']
+        cnt_info = info['cnt_info']
+        return dict(
+            cover=info['cover'], time=info['ctime'],
+            collect=cnt_info['collect'], play=cnt_info['play'],
+            like=cnt_info['thumb_up'], share=cnt_info['share'],
+        )
+
+
+    @property
+    def videos(self):
+        ps = 20
+        pages = math.ceil(self.number_of_media / ps)
+        for page in range(pages):
+            data = self._data_at(page, ps)['medias']
+            for video in data:
+                yield Video(video['id'], info=False)
+
+
+    def _data_at(self, page, ps=20):
+        url = 'https://api.bilibili.com/x/v3/fav/resource/list'
+        params = dict(media_id=self.id, pn=page, ps=ps)
+        return requests.get(url, params=params).json()['data']
+
 
 
 if __name__ == '__main__':
