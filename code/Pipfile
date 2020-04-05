@@ -17,6 +17,7 @@ sqlalchemy = "*"
 lxml = "*"
 bs4 = "*"
 rsa = "*"
+pymusic-dl = "*"
 
 [requires]
 python_version = "3.8"

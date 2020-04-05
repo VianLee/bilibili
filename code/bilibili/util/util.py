@@ -19,14 +19,15 @@ def debug(**kwargs):
     IPython.embed(user_ns=sys._getframe(1).f_locals, colors='Linux', **kwargs)
 
 
-def bv2av(x):
+def bv2av(x, prefix=True):
     '''
     Example:
         >>> bv2av('BV1A7411w71V')
         'av90501130'
     '''
     r = sum(tr[x[s[i]]]*58**i for i in range(6))
-    return f'av{(r-add)^xor}'
+    id = (r-add) ^ xor
+    return f'av{id}' if prefix else str(id)
 
 
 def av2bv(x):
@@ -35,7 +36,7 @@ def av2bv(x):
         >>> av2bv('AV90501130')
         'BV1A7411w71V'
     '''
-    x = int(x.replace('av', '').replace('AV', ''))
+    x = int(str(x).replace('av', '').replace('AV', ''))
     x = (x^xor) + add
     r = list('BV1  4 1 7  ')
     for i in range(6):

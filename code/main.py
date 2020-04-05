@@ -34,7 +34,7 @@ if __name__ == '__main__':
             sleep(5)
             user_name = browser.find_elements_by_class_name(tag)[0].text
             texts = (
-                f'早上好 {user_name} ～',
+                f'晚饭时间！{user_name} 记得休息呀～',
             )
             for text in texts:
                 browser.find_element_by_class_name('chat-input.border-box') \
