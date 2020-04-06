@@ -13,3 +13,32 @@
 
 ## [用户 25956866 收藏夹来源](用户_25956866_收藏夹来源.json)
 初步判定用户 25956866 为营销号，此数据为记录其收藏夹收藏视频的用户资料 id，用以查找相似营销号。
+
+
+## [入驻明星视频数据](入驻明星视频数据.json)
+```python
+import json
+import time
+import tqdm
+
+from bilibili.space import User
+
+
+u = User(354576498)
+output_path = '入驻明星视频数据.json'
+result = dict()
+
+for favlist in u.favorites:
+    if favlist.title == '用作数据分析的明星入驻':
+        break
+for video in tqdm.tqdm(favlist.videos, total=favlist.number_of_media):
+    video.set_info()
+    owner = User(video.info['owner'])
+    result[owner.id] = dict(
+        info=owner.info,
+        videos=tuple(v.info for v in owner.videos)
+    )
+    time.sleep(1)
+with open(output_path, 'w') as f:
+    json.dump(result, f, ensure_ascii=False)
+```
